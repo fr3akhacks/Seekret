@@ -1,39 +1,49 @@
 import os
 import sys
 import base64
+import binascii
 import re
 import requests
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
-
+from urllib.parse import urlsplit
 
 def usage():
     print("Usage: find_sensitive_info.py [-v|--verbose] [url_list_file]")
     sys.exit(1)
 
-
 def search_sensitive_info(decoded):
     return sensitive_info_pattern.search(decoded)
 
-
 def process_file(file):
+    results = []
     with open(file) as f:
         content = f.read()
 
     for match in base64_pattern.finditer(content):
         encoded = match.group(0)
+        
+        # Add padding if necessary
+        padding = len(encoded) % 4
+        if padding:
+            encoded += "=" * (4 - padding)
+
         try:
-            decoded = base64.b64decode(encoded).decode('utf-8')
-        except (TypeError, UnicodeDecodeError):
+            decoded = binascii.a2b_base64(encoded).decode('utf-8')
+        except (TypeError, UnicodeDecodeError, binascii.Error):
             continue
 
         sensitive_info = search_sensitive_info(decoded)
         if sensitive_info:
-            print(f"{file} (Base64 decoded): {decoded}")
+            result = f"{file}: {sensitive_info.group(0)} (Base64 decoded)"
+            results.append(result)
 
     for match in sensitive_info_pattern.finditer(content):
-        print(f"{file}: {match.group(0)}")
+        if match:
+            result = f"{file}: {match.group(0)}"
+            results.append(result)
 
+    return results
 
 def main():
     if len(sys.argv) < 2:
@@ -55,6 +65,11 @@ def main():
         urls = [line.strip() for line in f.readlines()]
 
     for url in urls:
+        parsed_url = urlsplit(url)
+        if not parsed_url.scheme or not parsed_url.netloc:
+            print(f"Skipping invalid URL: {url}")
+            continue
+
         if verbose:
             print(f"Downloading {url}")
 
@@ -63,7 +78,6 @@ def main():
         with open(os.path.join(directory, file_name), 'wb') as f:
             f.write(response.content)
 
-    # Read regex patterns from file and combine them
     with open('regex_patterns.txt') as f:
         regex_patterns = [pattern.strip() for pattern in f.readlines()]
     combined_regex = "|".join(regex_patterns)
@@ -79,9 +93,20 @@ def main():
 
     js_files = list(Path(directory).rglob("*.js"))
 
+    all_results = []
     with ThreadPoolExecutor() as executor:
-        executor.map(process_file, js_files)
+        results = executor.map(process_file, js_files)
+        for file_results in results:
+            all_results.extend(file_results)
 
+    if all_results:
+        output_file = "sensitive_info_output.txt"
+        with open(output_file, "w") as f:
+            for result in all_results:
+                print(result)
+                f.write(result + "\n")
+    else:
+        print("No sensitive information found")
 
 if __name__ == "__main__":
     main()
