@@ -74,7 +74,12 @@ def main():
             print(f"Downloading {url}")
 
         file_name = os.path.basename(url)
-        response = requests.get(url)
+        try:
+            response = requests.get(url)
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading {url}: {e}")
+            continue
+
         with open(os.path.join(directory, file_name), 'wb') as f:
             f.write(response.content)
 
