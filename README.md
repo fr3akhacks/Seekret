@@ -13,24 +13,26 @@ Python 3.6 or higher
 ## Installation
 Clone the repository or download the source code.
 
-git clone https://github.com/your-repo-url/Seekret.git
+``git clone https://github.com/your-repo-url/Seekret.git``
 Change to the Seekret directory:
 
-cd Seekret
+``cd Seekret``
 ## Usage
 ### Basic usage
 Run Seekret by providing a text file containing the URLs of the JavaScript files to be analyzed:
 
 
-
+``
 python find_sensitive_info.py urls.txt
+``
 The downloaded JavaScript files will be stored in the downloaded_js_files directory.
 
 ### Verbose mode
 To enable verbose mode, which provides additional output on the files being downloaded and the search progress, pass the -v or --verbose flag:
 
-
+``
 python find_sensitive_info.py -v urls.txt
+``
 ### Customizing regex patterns
 By default, Seekret searches for several common patterns of sensitive information. You can modify the regex patterns in the regex_patterns.txt file to better suit your needs. Each pattern should be placed on a separate line.
 
